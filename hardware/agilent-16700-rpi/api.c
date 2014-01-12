@@ -53,99 +53,99 @@ static int init(struct sr_context *sr_ctx)
 
 #define LINE_WIDTH   100
 
-static int getMoreDataIfNeeded()
-{
-  if (textbuflen <= 0)
-  {
-    if ((textbuflen=read(InstrumentSocket,textbuffer,sizeof(textbuffer))) <= 0)
-    {
-      return(-1);
-    }
-    textptr = textbuffer;
-  }
-  return 0;
-}
-
-int getString(char *line, int len)
-{
-
-	int i=0;
-
-	if (InstrumentSocket < 0)
-	{
-		fprintf(stderr,"getLine: no open socket connection!\n");
-		return -1;
-	}
-
-
-	if (getMoreDataIfNeeded() < 0)
-		return -1;
-
-
-	while (textbuflen > 0 &&
-			i < len-1 &&
-			*textptr != '\r' &&
-			*textptr != '\n')
-	{
-		line[i] = *textptr++;
-		textbuflen--;
-		i++;
-	}
-
-	line[i] = 0;
-	if (i < len-1)
-	{
-		textptr++;
-		textbuflen--;
-		if (textbuflen >= 1 && (*textptr == '\r' || *textptr == '\n'))
-		{
-			textptr++;
-			textbuflen--;
-		}
-		return(i);
-	}
-	else
-	{
-		return(-1);
-	}
-}
-
-int getText(int max_lines, int *num_lines, char *output) {
-	int i;
-	int retVal = 0;
-
-	*num_lines = 0;
-
-	i = 0;
-	while (1) {
-
-		if (getString(&output[i * LINE_WIDTH], LINE_WIDTH) < 0) {
-			return (-1);
-		}
-
-		/*
-		 * Check for error returns
-		 */
-		if (!strncmp(&output[LINE_WIDTH * i], "!ERROR", 6)) {
-			retVal = -1;
-		}
-
-		/*
-		 * Check for the prompt to see if we're done
-		 */
-		if (!strncmp(&output[LINE_WIDTH * i], "->", 2)) {
-			return (retVal);
-		} else {
-			(*num_lines)++;
-		}
-
-		i++;
-
-		if (i >= max_lines) {
-			return (1);
-		}
-	}
-}
+//static int getMoreDataIfNeeded()
+//{
+//  if (textbuflen <= 0)
+//  {
+//    if ((textbuflen=read(InstrumentSocket,textbuffer,sizeof(textbuffer))) <= 0)
+//    {
+//      return(-1);
+//    }
+//    textptr = textbuffer;
+//  }
+//  return 0;
+//}
+//
+//int getString(char *line, int len)
+//{
+//
+//	int i=0;
+//
+//	if (InstrumentSocket < 0)
+//	{
+//		fprintf(stderr,"getLine: no open socket connection!\n");
+//		return -1;
+//	}
+//
+//
+//	if (getMoreDataIfNeeded() < 0)
+//		return -1;
+//
+//
+//	while (textbuflen > 0 &&
+//			i < len-1 &&
+//			*textptr != '\r' &&
+//			*textptr != '\n')
+//	{
+//		line[i] = *textptr++;
+//		textbuflen--;
+//		i++;
+//	}
+//
+//	line[i] = 0;
+//	if (i < len-1)
+//	{
+//		textptr++;
+//		textbuflen--;
+//		if (textbuflen >= 1 && (*textptr == '\r' || *textptr == '\n'))
+//		{
+//			textptr++;
+//			textbuflen--;
+//		}
+//		return(i);
+//	}
+//	else
+//	{
+//		return(-1);
+//	}
+//}
+//
+//int getText(int max_lines, int *num_lines, char *output) {
+//	int i;
+//	int retVal = 0;
+//
+//	*num_lines = 0;
+//
+//	i = 0;
+//	while (1) {
+//
+//		if (getString(&output[i * LINE_WIDTH], LINE_WIDTH) < 0) {
+//			return (-1);
+//		}
+//
+//		/*
+//		 * Check for error returns
+//		 */
+//		if (!strncmp(&output[LINE_WIDTH * i], "!ERROR", 6)) {
+//			retVal = -1;
+//		}
+//
+//		/*
+//		 * Check for the prompt to see if we're done
+//		 */
+//		if (!strncmp(&output[LINE_WIDTH * i], "->", 2)) {
+//			return (retVal);
+//		} else {
+//			(*num_lines)++;
+//		}
+//
+//		i++;
+//
+//		if (i >= max_lines) {
+//			return (1);
+//		}
+//	}
+//}
 
 static int probe(const char *ipAddr, GSList **devices) {
 	const char *tcp_prefix = "tcp/";
@@ -216,7 +216,7 @@ static int probe(const char *ipAddr, GSList **devices) {
 			sr_err("Write failed: %s", strerror(errno));
 		}
 		
-		getText(max_lines, num_lines, output)
+		//getText(max_lines, num_lines, output)
 
 		g_strfreev(tokens);
 	} else {
