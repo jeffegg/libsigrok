@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
+#include <stdio.h>
 
 #include "protocol.h"
 #include "libsigrok.h"
@@ -147,12 +148,77 @@ static int init(struct sr_context *sr_ctx)
 //	}
 //}
 
+static void DecodeModule(struct Agilent16700Modules *module, char * moduleInfo)
+{
+	printf("%s\n", moduleInfo);
+
+	if(strstr(moduleInfo, "MHz") != NULL)
+	{
+		printf(" -detechte M\n");
+	}
+	else if(strstr(moduleInfo, "GHz") != NULL)
+	{
+		printf(" -detechte G\n");
+	}
+}
+
+static void ModuleInfoParser(char * moduleInfo)
+{
+	char *stringLoc = moduleInfo;
+	struct Agilent16700Modules module;
+	//typ loc act name           module     info
+	//LA  F   1  "Analyzer<F>"  "16717A"  "333MHz State/2GHz Timing Zoom 2M Sample"
+
+	//Type
+	stringLoc = strtok(moduleInfo, " /\"");
+	if(strncmp(stringLoc, "LA", 2))
+	{
+		module.type = ANALYZER;
+	}
+	else if(strncmp(stringLoc, "PG", 2))
+	{
+		module.type = PATTERN_GEN;
+	}
+	else if(strncmp(stringLoc, "SC", 2))
+	{
+		module.type = SCOPE;
+	}
+	else
+	{
+		return;
+	}
+
+	// Location
+	stringLoc = strtok (NULL, " /\"");
+	module.location1 = stringLoc[0];
+	module.location2 = stringLoc[1];
+
+	// active
+	stringLoc = strtok (NULL, " /\"");
+
+	// name
+	stringLoc = strtok (NULL, " /\"");
+
+	//model name
+	stringLoc = strtok (NULL, " /\"");
+	//moduleModel
+
+	//Decode reset, could ne freq, samples, etc
+	stringLoc = strtok (NULL, " /\"");
+	while (stringLoc != NULL)
+	{
+		DecodeModule(&module, stringLoc);
+		stringLoc = strtok (NULL, " /\"");
+	}
+}
+
 static int probe(const char *ipAddr, GSList **devices) {
 	const char *tcp_prefix = "tcp/";
 	gchar **tokens, *address, *port;
 	struct addrinfo hints;
 	struct addrinfo *results, *res;
-	char localcommand[1024] = "analyzer_info\n";
+	char localcommand[1024] = "modules -a\n"; // Get the active modules
+	//char localcommand[1024] = "modules\n"; // Get all modules
 	int len = 0;
 	int i = 0;
 	int err;
@@ -215,7 +281,10 @@ static int probe(const char *ipAddr, GSList **devices) {
 		if (nbytes < 0) {
 			sr_err("Write failed: %s", strerror(errno));
 		}
-		
+		nbytes = read(tcp.socket,localcommand,sizeof(localcommand));
+		printf(localcommand);
+		printf("\n");
+		ModuleInfoParser(localcommand);
 		//getText(max_lines, num_lines, output)
 
 		g_strfreev(tokens);
