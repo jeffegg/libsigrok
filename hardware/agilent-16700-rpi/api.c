@@ -160,7 +160,7 @@ static int probe(const char *ipAddr, GSList **devices) {
 	int nbytes;
 
 	if (strncmp(ipAddr, tcp_prefix, strlen(tcp_prefix)) == 0) {
-		sr_dbg("Opening TCP connection %s.", ipAddr);
+		sr_dbg("Opening TCP connection to: %s.", ipAddr);
 		tokens = g_strsplit(ipAddr + strlen(tcp_prefix), "/", 0);
 		address = tokens[0];
 		port = tokens[1];
