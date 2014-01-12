@@ -30,6 +30,8 @@
 
 /** Private, per-device-instance driver context. */
 struct dev_context {
+	unsigned int numModules;
+	struct Agilent16700Modules *modules;
 	/* Model-specific information */
 
 	/* Acquisition settings */
@@ -38,6 +40,23 @@ struct dev_context {
 
 	/* Temporary state across callbacks */
 
+};
+
+enum MODULE_TYPE {
+	ANALYZER,
+	PATTERN_GEN,
+	SCOPE
+};
+
+struct Agilent16700Modules {
+	char location1;
+	char location2;
+	char *moduleType;
+	MODULE_TYPE type;
+	uint64_t maxTimingFrequency;
+	uint64_t maxTimingZoomFrequency;
+	uint64_t maxStateFrequency;
+	uint64_t sampleSize;
 };
 
 SR_PRIV int agilent_16700_rpi_receive_data(int fd, int revents, void *cb_data);
