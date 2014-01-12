@@ -79,19 +79,15 @@ AC_SUBST(SR_LIB_LDFLAGS)
 
 # Hardware support '--enable' options.
 
-AC_ARG_ENABLE(agilent-16700-rpi, AC_HELP_STRING([--enable-agilent-16700-rpi],
-	[enable agilent-16700-rpi support [default=yes]]),
-	[HW_AGILENT_16700_RPI="$enableval"],
-	[HW_AGILENT_16700_RPI=$HW_ENABLED_DEFAULT])
-AM_CONDITIONAL(HW_AGILENT_16700_RPI, test x$HW_AGILENT_16700_RPI = xyes)
-if test "x$HW_AGILENT_16700_RPI" = "xyes"; then
-	AC_DEFINE(HAVE_HW_AGILENT_16700_RPI, 1, [agilent-16700-rpi support])
-fi
-
 AC_ARG_ENABLE(all-drivers, AC_HELP_STRING([--enable-all-drivers],
 	[enable all drivers by default [default=yes]]),
 	[HW_ENABLED_DEFAULT="$enableval"],
 	[HW_ENABLED_DEFAULT="yes"])
+
+AC_ARG_ENABLE(agilent-16700-rpi, AC_HELP_STRING([--enable-agilent-16700-rpi],
+	[enable Agilent-16700-RPI support [default=yes]]),
+	[HW_AGILENT_16700_RPI="$enableval"],
+	[HW_AGILENT_16700_RPI=$HW_ENABLED_DEFAULT])
 
 AC_ARG_ENABLE(agilent-dmm, AC_HELP_STRING([--enable-agilent-dmm],
 	[enable Agilent DMM support [default=yes]]),
@@ -388,6 +384,11 @@ esac
 AC_SUBST(SR_PKGLIBS)
 
 # Now set AM_CONDITIONALs and AC_DEFINEs for the enabled/disabled drivers.
+
+AM_CONDITIONAL(HW_AGILENT_16700_RPI, test x$HW_AGILENT_16700_RPI = xyes)
+if test "x$HW_AGILENT_16700_RPI" = "xyes"; then
+	AC_DEFINE(HAVE_HW_AGILENT_16700_RPI, 1, [Agilent-16700-RPI support])
+fi
 
 AM_CONDITIONAL(HW_AGILENT_DMM, test x$HW_AGILENT_DMM = xyes)
 if test "x$HW_AGILENT_DMM" = "xyes"; then

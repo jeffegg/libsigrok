@@ -1,0 +1,438 @@
+From 804ac758b1647ac621f18e3c6153b677c1819e1b Mon Sep 17 00:00:00 2001
+From: Jeff Eglinger <jeffegg@jeffegg.com>
+Date: Sat, 11 Jan 2014 17:38:19 -0800
+Subject: [PATCH] agilent-16700-rpi: Initial driver skeleton.
+
+---
+ configure.ac                           |   11 ++
+ hardware/Makefile.am                   |    5 +
+ hardware/agilent-16700-rpi/Makefile.am |   33 ++++++
+ hardware/agilent-16700-rpi/api.c       |  191 ++++++++++++++++++++++++++++++++
+ hardware/agilent-16700-rpi/protocol.c  |   40 +++++++
+ hardware/agilent-16700-rpi/protocol.h  |   45 ++++++++
+ hwdriver.c                             |    6 +
+ 7 files changed, 331 insertions(+)
+ create mode 100644 hardware/agilent-16700-rpi/Makefile.am
+ create mode 100644 hardware/agilent-16700-rpi/api.c
+ create mode 100644 hardware/agilent-16700-rpi/protocol.c
+ create mode 100644 hardware/agilent-16700-rpi/protocol.h
+
+diff --git a/configure.ac b/configure.ac
+index 240e7e3..781c0e8 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -79,6 +79,15 @@ AC_SUBST(SR_LIB_LDFLAGS)
+ 
+ # Hardware support '--enable' options.
+ 
++AC_ARG_ENABLE(agilent-16700-rpi, AC_HELP_STRING([--enable-agilent-16700-rpi],
++	[enable agilent-16700-rpi support [default=yes]]),
++	[HW_AGILENT_16700_RPI="$enableval"],
++	[HW_AGILENT_16700_RPI=$HW_ENABLED_DEFAULT])
++AM_CONDITIONAL(HW_AGILENT_16700_RPI, test x$HW_AGILENT_16700_RPI = xyes)
++if test "x$HW_AGILENT_16700_RPI" = "xyes"; then
++	AC_DEFINE(HAVE_HW_AGILENT_16700_RPI, 1, [agilent-16700-rpi support])
++fi
++
+ AC_ARG_ENABLE(all-drivers, AC_HELP_STRING([--enable-all-drivers],
+ 	[enable all drivers by default [default=yes]]),
+ 	[HW_ENABLED_DEFAULT="$enableval"],
+@@ -580,6 +589,7 @@ AC_SUBST(SR_PACKAGE_VERSION_MICRO)
+ AC_SUBST(SR_PACKAGE_VERSION)
+ 
+ AC_CONFIG_FILES([Makefile version.h hardware/Makefile
++		 hardware/agilent-16700-rpi/Makefile
+ 		 hardware/agilent-dmm/Makefile
+ 		 hardware/alsa/Makefile
+ 		 hardware/appa-55ii/Makefile
+@@ -649,6 +659,7 @@ for lib in "glib-2.0 >= 2.32.0" "libzip >= 0.10" "libserialport >= 0.1.0" "libus
+ done
+ 
+ echo -e "\nEnabled hardware drivers:\n"
++echo "  - agilent-16700-rpi............... $HW_AGILENT_16700_RPI"
+ echo "  - agilent-dmm..................... $HW_AGILENT_DMM"
+ echo "  - alsa............................ $HW_ALSA"
+ echo "  - appa-55ii....................... $HW_APPA_55II"
+diff --git a/hardware/Makefile.am b/hardware/Makefile.am
+index 91b1045..671fd81 100644
+--- a/hardware/Makefile.am
++++ b/hardware/Makefile.am
+@@ -19,6 +19,7 @@
+ ##
+ 
+ SUBDIRS = \
++	agilent-16700-rpi \
+ 	agilent-dmm \
+ 	alsa \
+ 	appa-55ii \
+@@ -61,6 +62,10 @@ libsigrokhardware_la_SOURCES =
+ libsigrokhardware_la_LIBADD = \
+ 	common/libsigrok_hw_common.la
+ 
++if HW_AGILENT_16700_RPI
++libsigrokhardware_la_LIBADD += agilent-16700-rpi/libsigrok_hw_agilent_16700_rpi.la
++endif
++
+ if HW_AGILENT_DMM
+ libsigrokhardware_la_LIBADD += agilent-dmm/libsigrok_hw_agilent_dmm.la
+ endif
+diff --git a/hardware/agilent-16700-rpi/Makefile.am b/hardware/agilent-16700-rpi/Makefile.am
+new file mode 100644
+index 0000000..6d943ac
+--- /dev/null
++++ b/hardware/agilent-16700-rpi/Makefile.am
+@@ -0,0 +1,33 @@
++##
++## This file is part of the libsigrok project.
++##
++## Copyright (C) 2014 Jeff Eglinger <jeffegg@jeffegg.com>
++##
++## This program is free software: you can redistribute it and/or modify
++## it under the terms of the GNU General Public License as published by
++## the Free Software Foundation, either version 3 of the License, or
++## (at your option) any later version.
++##
++## This program is distributed in the hope that it will be useful,
++## but WITHOUT ANY WARRANTY; without even the implied warranty of
++## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++## GNU General Public License for more details.
++##
++## You should have received a copy of the GNU General Public License
++## along with this program.  If not, see <http://www.gnu.org/licenses/>.
++##
++
++if HW_AGILENT_16700_RPI
++
++# Local lib, this is NOT meant to be installed!
++noinst_LTLIBRARIES = libsigrok_hw_agilent_16700_rpi.la
++
++libsigrok_hw_agilent_16700_rpi_la_SOURCES = \
++	api.c \
++	protocol.c \
++	protocol.h
++
++libsigrok_hw_agilent_16700_rpi_la_CFLAGS = \
++	-I$(top_srcdir)
++
++endif
+diff --git a/hardware/agilent-16700-rpi/api.c b/hardware/agilent-16700-rpi/api.c
+new file mode 100644
+index 0000000..3331e5e
+--- /dev/null
++++ b/hardware/agilent-16700-rpi/api.c
+@@ -0,0 +1,191 @@
++/*
++ * This file is part of the libsigrok project.
++ *
++ * Copyright (C) 2014 Jeff Eglinger <jeffegg@jeffegg.com>
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "protocol.h"
++
++SR_PRIV struct sr_dev_driver agilent_16700_rpi_driver_info;
++static struct sr_dev_driver *di = &agilent_16700_rpi_driver_info;
++
++static int init(struct sr_context *sr_ctx)
++{
++	return std_init(sr_ctx, di, LOG_PREFIX);
++}
++
++static GSList *scan(GSList *options)
++{
++	struct drv_context *drvc;
++	GSList *devices;
++
++	(void)options;
++
++	devices = NULL;
++	drvc = di->priv;
++	drvc->instances = NULL;
++
++	/* TODO: scan for devices, either based on a SR_CONF_CONN option
++	 * or on a USB scan. */
++
++	return devices;
++}
++
++static GSList *dev_list(void)
++{
++	return ((struct drv_context *)(di->priv))->instances;
++}
++
++static int dev_clear(void)
++{
++	return std_dev_clear(di, NULL);
++}
++
++static int dev_open(struct sr_dev_inst *sdi)
++{
++	(void)sdi;
++
++	/* TODO: get handle from sdi->conn and open it. */
++
++	sdi->status = SR_ST_ACTIVE;
++
++	return SR_OK;
++}
++
++static int dev_close(struct sr_dev_inst *sdi)
++{
++	(void)sdi;
++
++	/* TODO: get handle from sdi->conn and close it. */
++
++	sdi->status = SR_ST_INACTIVE;
++
++	return SR_OK;
++}
++
++static int cleanup(void)
++{
++	dev_clear();
++
++	/* TODO: free other driver resources, if any. */
++
++	return SR_OK;
++}
++
++static int config_get(int key, GVariant **data, const struct sr_dev_inst *sdi,
++		const struct sr_probe_group *probe_group)
++{
++	int ret;
++
++	(void)sdi;
++	(void)data;
++	(void)probe_group;
++
++	ret = SR_OK;
++	switch (key) {
++	/* TODO */
++	default:
++		return SR_ERR_NA;
++	}
++
++	return ret;
++}
++
++static int config_set(int key, GVariant *data, const struct sr_dev_inst *sdi,
++		const struct sr_probe_group *probe_group)
++{
++	int ret;
++
++	(void)data;
++	(void)probe_group;
++
++	if (sdi->status != SR_ST_ACTIVE)
++		return SR_ERR_DEV_CLOSED;
++
++	ret = SR_OK;
++	switch (key) {
++	/* TODO */
++	default:
++		ret = SR_ERR_NA;
++	}
++
++	return ret;
++}
++
++static int config_list(int key, GVariant **data, const struct sr_dev_inst *sdi,
++		const struct sr_probe_group *probe_group)
++{
++	int ret;
++
++	(void)sdi;
++	(void)data;
++	(void)probe_group;
++
++	ret = SR_OK;
++	switch (key) {
++	/* TODO */
++	default:
++		return SR_ERR_NA;
++	}
++
++	return ret;
++}
++
++static int dev_acquisition_start(const struct sr_dev_inst *sdi,
++				    void *cb_data)
++{
++	(void)sdi;
++	(void)cb_data;
++
++	if (sdi->status != SR_ST_ACTIVE)
++		return SR_ERR_DEV_CLOSED;
++
++	/* TODO: configure hardware, reset acquisition state, set up
++	 * callbacks and send header packet. */
++
++	return SR_OK;
++}
++
++static int dev_acquisition_stop(struct sr_dev_inst *sdi, void *cb_data)
++{
++	(void)cb_data;
++
++	if (sdi->status != SR_ST_ACTIVE)
++		return SR_ERR_DEV_CLOSED;
++
++	/* TODO: stop acquisition. */
++
++	return SR_OK;
++}
++
++SR_PRIV struct sr_dev_driver agilent_16700_rpi_driver_info = {
++	.name = "agilent-16700-rpi",
++	.longname = "agilent-16700-rpi",
++	.api_version = 1,
++	.init = init,
++	.cleanup = cleanup,
++	.scan = scan,
++	.dev_list = dev_list,
++	.dev_clear = dev_clear,
++	.config_get = config_get,
++	.config_set = config_set,
++	.config_list = config_list,
++	.dev_open = dev_open,
++	.dev_close = dev_close,
++	.dev_acquisition_start = dev_acquisition_start,
++	.dev_acquisition_stop = dev_acquisition_stop,
++	.priv = NULL,
++};
+diff --git a/hardware/agilent-16700-rpi/protocol.c b/hardware/agilent-16700-rpi/protocol.c
+new file mode 100644
+index 0000000..d0ac396
+--- /dev/null
++++ b/hardware/agilent-16700-rpi/protocol.c
+@@ -0,0 +1,40 @@
++/*
++ * This file is part of the libsigrok project.
++ *
++ * Copyright (C) 2014 Jeff Eglinger <jeffegg@jeffegg.com>
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "protocol.h"
++
++SR_PRIV int agilent_16700_rpi_receive_data(int fd, int revents, void *cb_data)
++{
++	const struct sr_dev_inst *sdi;
++	struct dev_context *devc;
++
++	(void)fd;
++
++	if (!(sdi = cb_data))
++		return TRUE;
++
++	if (!(devc = sdi->priv))
++		return TRUE;
++
++	if (revents == G_IO_IN) {
++		/* TODO */
++	}
++
++	return TRUE;
++}
+diff --git a/hardware/agilent-16700-rpi/protocol.h b/hardware/agilent-16700-rpi/protocol.h
+new file mode 100644
+index 0000000..902bf3e
+--- /dev/null
++++ b/hardware/agilent-16700-rpi/protocol.h
+@@ -0,0 +1,45 @@
++/*
++ * This file is part of the libsigrok project.
++ *
++ * Copyright (C) 2014 Jeff Eglinger <jeffegg@jeffegg.com>
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef LIBSIGROK_HARDWARE_AGILENT_16700_RPI_PROTOCOL_H
++#define LIBSIGROK_HARDWARE_AGILENT_16700_RPI_PROTOCOL_H
++
++#include <stdint.h>
++#include <glib.h>
++#include "libsigrok.h"
++#include "libsigrok-internal.h"
++
++/* Message logging helpers with subsystem-specific prefix string. */
++#define LOG_PREFIX "agilent-16700-rpi"
++
++/** Private, per-device-instance driver context. */
++struct dev_context {
++	/* Model-specific information */
++
++	/* Acquisition settings */
++
++	/* Operational state */
++
++	/* Temporary state across callbacks */
++
++};
++
++SR_PRIV int agilent_16700_rpi_receive_data(int fd, int revents, void *cb_data);
++
++#endif
+diff --git a/hwdriver.c b/hwdriver.c
+index 37edf41..ae26733 100644
+--- a/hwdriver.c
++++ b/hwdriver.c
+@@ -122,6 +122,9 @@ static struct sr_config_info sr_config_info_data[] = {
+ };
+ 
+ /** @cond PRIVATE */
++#ifdef HAVE_HW_AGILENT_16700_RPI
++extern SR_PRIV struct sr_dev_driver agilent_16700_rpi_driver_info;
++#endif
+ #ifdef HAVE_HW_APPA_55II
+ extern SR_PRIV struct sr_dev_driver appa_55ii_driver_info;
+ #endif
+@@ -268,6 +271,9 @@ extern SR_PRIV struct sr_dev_driver tenma_72_7750_driver_info;
+ /** @endcond */
+ 
+ static struct sr_dev_driver *drivers_list[] = {
++#ifdef HAVE_HW_AGILENT_16700_RPI
++	&agilent_16700_rpi_driver_info,
++#endif
+ #ifdef HAVE_HW_APPA_55II
+ 	&appa_55ii_driver_info,
+ #endif
+-- 
+1.7.10.4
+
