@@ -122,6 +122,9 @@ static struct sr_config_info sr_config_info_data[] = {
 };
 
 /** @cond PRIVATE */
+#ifdef HAVE_HW_AGILENT_16700_RPI
+extern SR_PRIV struct sr_dev_driver agilent_16700_rpi_driver_info;
+#endif
 #ifdef HAVE_HW_APPA_55II
 extern SR_PRIV struct sr_dev_driver appa_55ii_driver_info;
 #endif
@@ -268,6 +271,9 @@ extern SR_PRIV struct sr_dev_driver tenma_72_7750_driver_info;
 /** @endcond */
 
 static struct sr_dev_driver *drivers_list[] = {
+#ifdef HAVE_HW_AGILENT_16700_RPI
+	&agilent_16700_rpi_driver_info,
+#endif
 #ifdef HAVE_HW_APPA_55II
 	&appa_55ii_driver_info,
 #endif

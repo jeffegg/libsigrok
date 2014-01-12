@@ -79,6 +79,15 @@ AC_SUBST(SR_LIB_LDFLAGS)
 
 # Hardware support '--enable' options.
 
+AC_ARG_ENABLE(agilent-16700-rpi, AC_HELP_STRING([--enable-agilent-16700-rpi],
+	[enable agilent-16700-rpi support [default=yes]]),
+	[HW_AGILENT_16700_RPI="$enableval"],
+	[HW_AGILENT_16700_RPI=$HW_ENABLED_DEFAULT])
+AM_CONDITIONAL(HW_AGILENT_16700_RPI, test x$HW_AGILENT_16700_RPI = xyes)
+if test "x$HW_AGILENT_16700_RPI" = "xyes"; then
+	AC_DEFINE(HAVE_HW_AGILENT_16700_RPI, 1, [agilent-16700-rpi support])
+fi
+
 AC_ARG_ENABLE(all-drivers, AC_HELP_STRING([--enable-all-drivers],
 	[enable all drivers by default [default=yes]]),
 	[HW_ENABLED_DEFAULT="$enableval"],
@@ -580,6 +589,7 @@ AC_SUBST(SR_PACKAGE_VERSION_MICRO)
 AC_SUBST(SR_PACKAGE_VERSION)
 
 AC_CONFIG_FILES([Makefile version.h hardware/Makefile
+		 hardware/agilent-16700-rpi/Makefile
 		 hardware/agilent-dmm/Makefile
 		 hardware/alsa/Makefile
 		 hardware/appa-55ii/Makefile
@@ -649,6 +659,7 @@ for lib in "glib-2.0 >= 2.32.0" "libzip >= 0.10" "libserialport >= 0.1.0" "libus
 done
 
 echo -e "\nEnabled hardware drivers:\n"
+echo "  - agilent-16700-rpi............... $HW_AGILENT_16700_RPI"
 echo "  - agilent-dmm..................... $HW_AGILENT_DMM"
 echo "  - alsa............................ $HW_ALSA"
 echo "  - appa-55ii....................... $HW_APPA_55II"

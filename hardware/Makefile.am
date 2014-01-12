@@ -19,6 +19,7 @@
 ##
 
 SUBDIRS = \
+	agilent-16700-rpi \
 	agilent-dmm \
 	alsa \
 	appa-55ii \
@@ -60,6 +61,10 @@ libsigrokhardware_la_SOURCES =
 
 libsigrokhardware_la_LIBADD = \
 	common/libsigrok_hw_common.la
+
+if HW_AGILENT_16700_RPI
+libsigrokhardware_la_LIBADD += agilent-16700-rpi/libsigrok_hw_agilent_16700_rpi.la
+endif
 
 if HW_AGILENT_DMM
 libsigrokhardware_la_LIBADD += agilent-dmm/libsigrok_hw_agilent_dmm.la
