@@ -150,11 +150,21 @@ static int init(struct sr_context *sr_ctx)
 
 static void DecodeModule(struct Agilent16700Modules *module, char * moduleInfo)
 {
+	char * temp;
 	printf("%s\n", moduleInfo);
 
 	if(strstr(moduleInfo, "MHz") != NULL)
 	{
-		printf(" -detechte M\n");
+		temp = moduleInfo;
+		moduleInfo = strtok (NULL, " /\"");
+		if(strstr(moduleInfo, "State"))
+		{
+			module.maxStateFrequency
+		}
+		else if(strstr(moduleInfo, "Timing"))
+		{
+			module->
+		}
 	}
 	else if(strstr(moduleInfo, "GHz") != NULL)
 	{
