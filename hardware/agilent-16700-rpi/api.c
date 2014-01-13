@@ -52,118 +52,114 @@ static int init(struct sr_context *sr_ctx)
 	return std_init(sr_ctx, di, LOG_PREFIX);
 }
 
-#define LINE_WIDTH   100
+int GetTCPString(char *output, int maxReadLen, int tcpSocket)
+{
+	int readLength = 0;
+	char tempBuffer[1024];
+	int i = 0;
 
-//static int getMoreDataIfNeeded()
-//{
-//  if (textbuflen <= 0)
-//  {
-//    if ((textbuflen=read(InstrumentSocket,textbuffer,sizeof(textbuffer))) <= 0)
-//    {
-//      return(-1);
-//    }
-//    textptr = textbuffer;
-//  }
-//  return 0;
-//}
-//
-//int getString(char *line, int len)
-//{
-//
-//	int i=0;
-//
-//	if (InstrumentSocket < 0)
-//	{
-//		fprintf(stderr,"getLine: no open socket connection!\n");
-//		return -1;
-//	}
-//
-//
-//	if (getMoreDataIfNeeded() < 0)
-//		return -1;
-//
-//
-//	while (textbuflen > 0 &&
-//			i < len-1 &&
-//			*textptr != '\r' &&
-//			*textptr != '\n')
-//	{
-//		line[i] = *textptr++;
-//		textbuflen--;
-//		i++;
-//	}
-//
-//	line[i] = 0;
-//	if (i < len-1)
-//	{
-//		textptr++;
-//		textbuflen--;
-//		if (textbuflen >= 1 && (*textptr == '\r' || *textptr == '\n'))
-//		{
-//			textptr++;
-//			textbuflen--;
-//		}
-//		return(i);
-//	}
-//	else
-//	{
-//		return(-1);
-//	}
-//}
-//
-//int getText(int max_lines, int *num_lines, char *output) {
-//	int i;
-//	int retVal = 0;
-//
-//	*num_lines = 0;
-//
-//	i = 0;
-//	while (1) {
-//
-//		if (getString(&output[i * LINE_WIDTH], LINE_WIDTH) < 0) {
-//			return (-1);
-//		}
-//
-//		/*
-//		 * Check for error returns
-//		 */
-//		if (!strncmp(&output[LINE_WIDTH * i], "!ERROR", 6)) {
-//			retVal = -1;
-//		}
-//
-//		/*
-//		 * Check for the prompt to see if we're done
-//		 */
-//		if (!strncmp(&output[LINE_WIDTH * i], "->", 2)) {
-//			return (retVal);
-//		} else {
-//			(*num_lines)++;
-//		}
-//
-//		i++;
-//
-//		if (i >= max_lines) {
-//			return (1);
-//		}
-//	}
-//}
+	if(maxReadLen > sizeof(tempBuffer))
+	{
+		maxReadLen = sizeof(tempBuffer);
+	}
+
+	if (tcpSocket < 0)
+	{
+		sr_err("getLine: no open socket connection!\n");
+		return -1;
+	}
+
+	readLength = read(tcpSocket, tempBuffer, maxReadLen);
+	printf("Read %i bytes with:\nStart read data\n%s\nDone read data\n\n", readLength, tempBuffer);
+	if (readLength < 0)
+	{
+		sr_err("Error reading from TCP stream");
+		return -1;
+	}
+	if (strstr(tempBuffer, "->") != NULL)
+	{
+		printf("!!!!! Found -> !!!!!\n");
+	}
+
+	for(i = 0; i < readLength; i++ )
+	{
+		output[i] = tempBuffer[i];
+	}
+
+	return readLength;
+}
+
+// Reads from the TCP port
+// returns the length of readData;
+int GetText(char *output, int outputLength, int tcpSocket)
+{
+	char *currentPos = output;
+	int currentLength = 0;
+	int i;
+	while (1)
+	{
+		currentLength += GetTCPString(currentPos, outputLength - currentLength, tcpSocket);
+		if (currentLength < 0)
+		{
+			sr_err("Error reading from TCP stream");
+			return -1;
+		}
+
+		//printf("full: %s", output);
+		// Check for error returns
+		if (strstr(output, "!ERROR") != NULL)
+		{
+			sr_err("Error detected from LA, %s", output);
+			return -1;
+		}
+
+		printf("Checking for prompt this is in the bufffer:\n%s\n\n", output);
+
+		// Check for the prompt to see if we're done */
+		if (strstr(output, "->") != NULL)
+		{
+			return currentLength;
+		}
+
+		if ((outputLength - currentLength) <= 0)
+		{
+			return currentLength;
+		}
+		currentPos += currentLength;
+		printf("current Lenght: %i\n", currentLength);
+		for(i = currentLength; i >= 0; i-- )
+		{
+			if(output[i] == 0)
+			{
+				output[i] = '$';
+				currentPos--;
+			}
+		}
+		printf("*currentPos: %x\n", *currentPos);
+		printf("Before next loop this is in the bufffer:\n%s\n\n", output);
+	}
+}
+
+static void SendCommand()
+{
+
+}
 
 static void DecodeModule(struct Agilent16700Modules *module, char * moduleInfo)
 {
-	char * temp;
 	printf("%s\n", moduleInfo);
 
 	if(strstr(moduleInfo, "MHz") != NULL)
 	{
-		temp = moduleInfo;
+		//temp = moduleInfo;
 		moduleInfo = strtok (NULL, " /\"");
 		if(strstr(moduleInfo, "State"))
 		{
-			module.maxStateFrequency
+			//module.maxStateFrequency
 		}
 		else if(strstr(moduleInfo, "Timing"))
 		{
-			module->
+			//module->
 		}
 	}
 	else if(strstr(moduleInfo, "GHz") != NULL)
@@ -227,8 +223,9 @@ static int probe(const char *ipAddr, GSList **devices) {
 	gchar **tokens, *address, *port;
 	struct addrinfo hints;
 	struct addrinfo *results, *res;
-	char localcommand[1024] = "modules -a\n"; // Get the active modules
-	//char localcommand[1024] = "modules\n"; // Get all modules
+	//char localcommand[1024] = "modules -a\n"; // Get the active modules
+	char localcommand[4096] = "modules\n"; // Get all modules
+	char readcommand[4096] = "modules\n"; // Get all modules
 	int len = 0;
 	int i = 0;
 	int err;
@@ -291,10 +288,11 @@ static int probe(const char *ipAddr, GSList **devices) {
 		if (nbytes < 0) {
 			sr_err("Write failed: %s", strerror(errno));
 		}
-		nbytes = read(tcp.socket,localcommand,sizeof(localcommand));
-		printf(localcommand);
+		GetText(readcommand, sizeof(readcommand), tcp.socket);
+
+		printf(readcommand);
 		printf("\n");
-		ModuleInfoParser(localcommand);
+		ModuleInfoParser(readcommand);
 		//getText(max_lines, num_lines, output)
 
 		g_strfreev(tokens);
