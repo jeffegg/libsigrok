@@ -55,13 +55,6 @@ static int init(struct sr_context *sr_ctx)
 int GetTCPString(char *output, int maxReadLen, int tcpSocket)
 {
 	int readLength = 0;
-	char tempBuffer[1024];
-	int i = 0;
-
-	if(maxReadLen > sizeof(tempBuffer))
-	{
-		maxReadLen = sizeof(tempBuffer);
-	}
 
 	if (tcpSocket < 0)
 	{
@@ -69,23 +62,12 @@ int GetTCPString(char *output, int maxReadLen, int tcpSocket)
 		return -1;
 	}
 
-	readLength = read(tcpSocket, tempBuffer, maxReadLen);
-	printf("Read %i bytes with:\nStart read data\n%s\nDone read data\n\n", readLength, tempBuffer);
+	readLength = read(tcpSocket, output, maxReadLen);
 	if (readLength < 0)
 	{
 		sr_err("Error reading from TCP stream");
 		return -1;
 	}
-	if (strstr(tempBuffer, "->") != NULL)
-	{
-		printf("!!!!! Found -> !!!!!\n");
-	}
-
-	for(i = 0; i < readLength; i++ )
-	{
-		output[i] = tempBuffer[i];
-	}
-
 	return readLength;
 }
 
@@ -95,25 +77,25 @@ int GetText(char *output, int outputLength, int tcpSocket)
 {
 	char *currentPos = output;
 	int currentLength = 0;
+	int readLength = 0;
 	int i;
 	while (1)
 	{
-		currentLength += GetTCPString(currentPos, outputLength - currentLength, tcpSocket);
-		if (currentLength < 0)
+		readLength = GetTCPString(currentPos, outputLength - currentLength, tcpSocket);
+		if (readLength < 0)
 		{
 			sr_err("Error reading from TCP stream");
 			return -1;
 		}
 
-		//printf("full: %s", output);
+		currentLength += readLength;
+
 		// Check for error returns
 		if (strstr(output, "!ERROR") != NULL)
 		{
 			sr_err("Error detected from LA, %s", output);
 			return -1;
 		}
-
-		printf("Checking for prompt this is in the bufffer:\n%s\n\n", output);
 
 		// Check for the prompt to see if we're done */
 		if (strstr(output, "->") != NULL)
@@ -125,18 +107,8 @@ int GetText(char *output, int outputLength, int tcpSocket)
 		{
 			return currentLength;
 		}
-		currentPos += currentLength;
-		printf("current Lenght: %i\n", currentLength);
-		for(i = currentLength; i >= 0; i-- )
-		{
-			if(output[i] == 0)
-			{
-				output[i] = '$';
-				currentPos--;
-			}
-		}
-		printf("*currentPos: %x\n", *currentPos);
-		printf("Before next loop this is in the bufffer:\n%s\n\n", output);
+
+		currentPos += readLength;
 	}
 }
 
@@ -223,9 +195,9 @@ static int probe(const char *ipAddr, GSList **devices) {
 	gchar **tokens, *address, *port;
 	struct addrinfo hints;
 	struct addrinfo *results, *res;
-	//char localcommand[1024] = "modules -a\n"; // Get the active modules
-	char localcommand[4096] = "modules\n"; // Get all modules
-	char readcommand[4096] = "modules\n"; // Get all modules
+	char localcommand[1024] = "modules -a\n"; // Get the active modules
+	//char localcommand[1300] = "modules\n"; // Get all modules
+	char readcommand[1300] = ""; // Get all modules
 	int len = 0;
 	int i = 0;
 	int err;
